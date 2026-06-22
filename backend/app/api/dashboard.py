@@ -6,15 +6,60 @@ from sqlalchemy.orm import Session
 from app.core.deps import require_coordinator
 from app.core.realtime import hub
 from app.database import SessionLocal, get_db
-from app.models import Course, CourseSession, Enrollment, SessionStatus, User
+from app.models import (
+    Course,
+    CourseSession,
+    Enrollment,
+    PresenceEvent,
+    PresenceEventType,
+    SessionStatus,
+    User,
+)
 from app.schemas import DashboardSummary, LiveCourseTile
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 
 
-def _build_summary(db: Session) -> DashboardSummary:
-    live_counts = hub.live_room_counts()
+def _live_counts_from_events(db: Session, session_ids: list[int]) -> dict[str, int]:
+    """Count who is currently in each session's room, derived from the event log.
 
+    A user is "in the room" when their most recent presence event is not a
+    `leave`. This is DB-only (no in-memory state), so it works on serverless and
+    is identical whether media flows over LiveKit webhooks or the built-in mesh.
+    Returns {room_id: count}.
+    """
+    if not session_ids:
+        return {}
+    # Latest event timestamp per (session, user).
+    latest = (
+        select(
+            PresenceEvent.session_id,
+            PresenceEvent.user_id,
+            func.max(PresenceEvent.at).label("max_at"),
+        )
+        .where(PresenceEvent.session_id.in_(session_ids))
+        .group_by(PresenceEvent.session_id, PresenceEvent.user_id)
+        .subquery()
+    )
+    rows = db.execute(
+        select(PresenceEvent.session_id, PresenceEvent.user_id, PresenceEvent.event_type)
+        .join(
+            latest,
+            (PresenceEvent.session_id == latest.c.session_id)
+            & (PresenceEvent.user_id == latest.c.user_id)
+            & (PresenceEvent.at == latest.c.max_at),
+        )
+    ).all()
+
+    by_session: dict[int, int] = {}
+    for session_id, _user_id, event_type in rows:
+        if event_type != PresenceEventType.leave:
+            by_session[session_id] = by_session.get(session_id, 0) + 1
+    # Map session_id -> room_id is resolved by the caller; here return per session id.
+    return by_session
+
+
+def _build_summary(db: Session) -> DashboardSummary:
     sessions = db.execute(
         select(CourseSession, Course)
         .join(Course, Course.id == CourseSession.course_id)
@@ -28,10 +73,12 @@ def _build_summary(db: Session) -> DashboardSummary:
     ).all()
     enrolled_by_course = {cid: cnt for cid, cnt in enroll_rows}
 
+    live_by_session = _live_counts_from_events(db, [s.id for s, _ in sessions])
+
     tiles: list[LiveCourseTile] = []
     total_live_participants = 0
     for session, course in sessions:
-        live_now = live_counts.get(session.room_id, 0)
+        live_now = live_by_session.get(session.id, 0)
         total_live_participants += live_now
         tiles.append(
             LiveCourseTile(

@@ -1,4 +1,7 @@
 // Thin API client. Token is kept in localStorage and attached to every call.
+// In local dev API_BASE is "" and Vite proxies /api -> :8000. In production
+// (e.g. Vercel) set VITE_API_BASE to the backend's URL.
+const API_BASE = import.meta.env.VITE_API_BASE || "";
 const TOKEN_KEY = "livetrain_token";
 
 export function getToken() {
@@ -23,7 +26,7 @@ async function request(path, { method = "GET", body, form } = {}) {
     headers["Content-Type"] = "application/json";
   }
 
-  const res = await fetch(`/api${path}`, { method, headers, body: payload });
+  const res = await fetch(`${API_BASE}/api${path}`, { method, headers, body: payload });
   if (!res.ok) {
     const detail = await res.json().catch(() => ({}));
     throw new Error(detail.detail || `Request failed (${res.status})`);
@@ -32,10 +35,13 @@ async function request(path, { method = "GET", body, form } = {}) {
 }
 
 export const api = {
+  config: () => request("/config"),
   login: (email, password) =>
     request("/auth/login", { method: "POST", form: { username: email, password } }),
   register: (data) => request("/auth/register", { method: "POST", body: data }),
   me: () => request("/auth/me"),
+
+  joinToken: (roomId) => request(`/rooms/${roomId}/join-token`, { method: "POST" }),
 
   courses: () => request("/courses"),
   createCourse: (data) => request("/courses", { method: "POST", body: data }),
@@ -51,8 +57,12 @@ export const api = {
   dashboardSummary: () => request("/dashboard/summary"),
 };
 
-// WebSocket helpers (relative URLs so Vite proxy / same-origin works).
+// WebSocket helper for the built-in mesh fallback. Honors VITE_API_BASE when
+// the backend is on a different origin; otherwise uses same-origin (Vite proxy).
 export function wsUrl(path) {
+  if (API_BASE) {
+    return API_BASE.replace(/^http/, "ws") + path;
+  }
   const proto = window.location.protocol === "https:" ? "wss" : "ws";
   return `${proto}://${window.location.host}${path}`;
 }

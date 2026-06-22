@@ -18,6 +18,17 @@ class Settings(BaseSettings):
     # CORS
     cors_origins: str = "http://localhost:5173,http://localhost:3000"
 
+    # LiveKit (production media server). When key/secret/url are all set, the
+    # platform uses LiveKit for video and derives attendance from LiveKit
+    # webhooks. When unset, it falls back to the built-in WebRTC mesh.
+    livekit_url: str = ""          # wss://your-project.livekit.cloud
+    livekit_api_key: str = ""
+    livekit_api_secret: str = ""
+
+    @property
+    def livekit_enabled(self) -> bool:
+        return bool(self.livekit_url and self.livekit_api_key and self.livekit_api_secret)
+
     # Attendance policy defaults (overridable per course)
     # Minimum share of a session a student must be present to be counted "present".
     attendance_present_threshold: float = 0.75

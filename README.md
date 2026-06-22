@@ -47,17 +47,20 @@ owning the room, LiveTrain gets:
                             └───────────┘
 ```
 
-**Attendance pipeline:** the room websocket writes `join` / `leave` / `heartbeat`
-rows to an append-only `presence_events` table. The attendance engine
-(`app/core/attendance_engine.py`) replays a session's events into present-seconds
-per student, divides by session length, and classifies each student as
-`present` / `partial` / `absent` against configurable thresholds. It runs:
+**Attendance pipeline:** every join/leave is written as an append-only row in
+`presence_events`. The source of those rows depends on the video backend:
 
-- continuously, every 60s, for all live sessions (background ticker), and
-- definitively when a session ends.
+- **LiveKit (production):** LiveKit calls `/api/livekit/webhook` on
+  `participant_joined` / `participant_left`; we translate each into a presence
+  event. No persistent socket on our side — so the backend runs on serverless.
+- **Mesh (fallback):** the room websocket logs join/leave/heartbeat directly.
 
-The computation is **idempotent and log-derived**, so restarts, duplicate joins,
-and dropped sockets never corrupt the register.
+Either way the attendance engine (`app/core/attendance_engine.py`) replays a
+session's events into present-seconds per student, divides by session length,
+and classifies each as `present` / `partial` / `absent` against configurable
+thresholds — **idempotent and log-derived**, so restarts, duplicate joins, and
+dropped connections never corrupt the register. It recomputes on each leave
+webhook, on session end, and on demand (`?recompute=true`).
 
 ---
 
@@ -67,10 +70,10 @@ and dropped sockets never corrupt the register.
 |-----------|-----------------------------------------|
 | Backend   | Python · FastAPI · SQLAlchemy 2         |
 | Database  | PostgreSQL                              |
-| Realtime  | WebSockets (signaling + dashboard)      |
-| Video     | WebRTC mesh (STUN); SFU-ready           |
+| Realtime  | LiveKit webhooks · dashboard polling    |
+| Video     | LiveKit SFU (built-in WebRTC mesh fallback) |
 | Frontend  | React · Vite · React Router             |
-| Deploy    | Docker Compose                          |
+| Deploy    | Vercel (frontend + serverless API) · Docker Compose |
 
 ---
 
@@ -138,16 +141,57 @@ npm run dev                          # http://localhost:5173 (proxies API to :80
 
 ---
 
+## Deploy live: Vercel + LiveKit
+
+The platform is configured to go live on **Vercel** (frontend + serverless API)
+with **LiveKit** as the media server. You'll need three free-tier accounts:
+**Vercel**, **LiveKit Cloud**, and a serverless **Postgres** (e.g. Neon).
+
+1. **Push this repo to GitHub** (Vercel deploys from a git repo).
+
+2. **LiveKit Cloud** → create a project. Copy the **WSS URL**, **API key**, and
+   **API secret**. Under the project's **Webhooks**, add:
+   `https://<your-backend-host>/api/livekit/webhook`
+
+3. **Postgres** → create a Neon database and copy its pooled connection string
+   (as `postgresql+psycopg://…`).
+
+4. **Backend → Vercel** (new project, root directory = `backend/`). Env vars:
+   ```
+   DATABASE_URL=postgresql+psycopg://…   (Neon, pooled)
+   SECRET_KEY=<long random>
+   LIVEKIT_URL=wss://<your>.livekit.cloud
+   LIVEKIT_API_KEY=…
+   LIVEKIT_API_SECRET=…
+   CORS_ORIGINS=https://<your-frontend>.vercel.app
+   ```
+   `backend/vercel.json` serves the FastAPI app as a Python serverless function.
+
+5. **Frontend → Vercel** (new project, root directory = `frontend/`). Env var:
+   ```
+   VITE_API_BASE=https://<your-backend>.vercel.app
+   ```
+
+6. Open the frontend URL, sign in, start a session, and hit **Copy link** — that
+   shareable `/room/<id>` link drops anyone enrolled straight into the live
+   LiveKit room, with attendance captured automatically.
+
+> **Note on serverless:** with LiveKit the backend uses no long-lived sockets,
+> so it fits Vercel's model. Prefer a persistent host? The included
+> `backend/Dockerfile` + `docker-compose.yml` run the same app on Render,
+> Railway, Fly.io, or any VPS unchanged.
+
 ## Scaling to 100 concurrent courses
 
-- **Media:** the default WebRTC mesh suits small cohorts. For large classes,
-  point `relay_to_room` (in `app/core/realtime.py`) at an SFU such as LiveKit or
-  mediasoup. The attendance layer is independent of media transport.
-- **Realtime fan-out:** per-process room/dashboard state lives in `RoomHub`. To
-  run multiple API workers, back it with Redis pub/sub — the
-  broadcast/relay interface stays the same.
+- **Media:** LiveKit (the configured backend) is a production SFU and scales to
+  large classes out of the box. The built-in mesh remains as a no-dependency
+  fallback for small cohorts / local dev. The attendance layer is independent of
+  media transport.
+- **Realtime:** live counts are derived from the presence-event log in the DB,
+  so the dashboard scales horizontally with no shared in-memory state — any
+  serverless instance can serve it.
 - **Attendance:** computed from the event log in a single cheap pass per session;
-  comfortably handles ~100 live sessions on the 60s ticker.
+  recomputed on each LiveKit leave webhook and on session end.
 
 ## Project layout
 
@@ -170,9 +214,10 @@ docker-compose.yml
 
 ## Roadmap
 
-- [ ] SFU integration (LiveKit) for large rooms
-- [ ] Redis-backed `RoomHub` for horizontal scaling
+- [x] SFU integration (LiveKit) for large rooms
+- [x] Generated shareable join links
+- [x] Vercel-ready serverless deployment
 - [ ] Recurring schedules & calendar invites
 - [ ] CSV / SIS export of attendance registers
-- [ ] Screen share, recording, breakout rooms
+- [ ] Recording & breakout rooms (LiveKit Egress)
 - [ ] Alembic migrations (currently `create_all` on startup)

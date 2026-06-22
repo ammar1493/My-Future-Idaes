@@ -1,12 +1,13 @@
 """LiveTrain API — entrypoint."""
 import asyncio
+import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import select
 
-from app.api import auth, courses, dashboard, rooms, sessions
+from app.api import auth, courses, dashboard, livekit_rooms, meta, rooms, sessions
 from app.config import settings
 from app.core.attendance_engine import recompute_session_attendance
 from app.database import Base, SessionLocal, engine
@@ -38,9 +39,16 @@ async def _attendance_ticker() -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)
-    task = asyncio.create_task(_attendance_ticker())
+    # On serverless (Vercel) instances are frozen between requests, so the
+    # background ticker can't run reliably — and isn't needed: attendance is
+    # recomputed on each LiveKit leave webhook and on session end. Only start
+    # the ticker on a long-running host.
+    task = None
+    if not os.environ.get("VERCEL"):
+        task = asyncio.create_task(_attendance_ticker())
     yield
-    task.cancel()
+    if task:
+        task.cancel()
 
 
 app = FastAPI(title=settings.app_name, version="0.1.0", lifespan=lifespan)
@@ -53,11 +61,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(meta.router)
 app.include_router(auth.router)
 app.include_router(courses.router)
 app.include_router(sessions.router)
 app.include_router(dashboard.router)
-app.include_router(rooms.router)
+app.include_router(livekit_rooms.router)
+app.include_router(rooms.router)  # built-in WebRTC mesh fallback (non-serverless)
 
 
 @app.get("/health")

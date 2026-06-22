@@ -1,52 +1,45 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { api, getToken, wsUrl } from "../api/client";
+import { api } from "../api/client";
 
-// The coordinator's single pane of glass across every running course.
-// One snapshot fetch + a live websocket that patches per-room headcounts as
-// students join and leave — so 100 simultaneous sessions stay current with no
-// polling and no manual register.
+// The coordinator's single pane of glass across every running course. Live
+// headcounts are derived server-side from the presence-event log (fed by
+// LiveKit webhooks), so a short poll keeps all 100 simultaneous sessions
+// current — no manual register, and no persistent socket required (serverless
+// friendly).
+const POLL_MS = 4000;
+
 export default function Dashboard() {
   const [summary, setSummary] = useState(null);
   const [error, setError] = useState("");
   const [connected, setConnected] = useState(false);
-  const wsRef = useRef(null);
 
   useEffect(() => {
-    api.dashboardSummary().then(setSummary).catch((e) => setError(e.message));
+    let active = true;
 
-    const ws = new WebSocket(wsUrl(`/api/dashboard/live`));
-    wsRef.current = ws;
-    ws.onopen = () => setConnected(true);
-    ws.onclose = () => setConnected(false);
-    ws.onmessage = (evt) => {
-      const msg = JSON.parse(evt.data);
-      if (msg.type === "snapshot") {
-        setSummary(msg.data);
-      } else if (msg.type === "presence") {
-        // Patch a single room's live count in place.
-        setSummary((prev) => {
-          if (!prev) return prev;
-          const tiles = prev.tiles.map((t) =>
-            t.room_id === msg.room_id ? { ...t, live_now: msg.live_now } : t
-          );
-          const total = tiles.reduce((a, t) => a + t.live_now, 0);
-          return { ...prev, tiles, total_participants_live: total };
-        });
+    async function tick() {
+      try {
+        const data = await api.dashboardSummary();
+        if (!active) return;
+        setSummary(data);
+        setConnected(true);
+        setError("");
+      } catch (e) {
+        if (!active) return;
+        setConnected(false);
+        setError(e.message);
       }
-    };
-    // Keep-alive ping.
-    const ping = setInterval(() => {
-      if (ws.readyState === WebSocket.OPEN) ws.send("ping");
-    }, 25000);
+    }
 
+    tick();
+    const timer = setInterval(tick, POLL_MS);
     return () => {
-      clearInterval(ping);
-      ws.close();
+      active = false;
+      clearInterval(timer);
     };
   }, []);
 
-  if (error) return <div className="error">⚠ {error}</div>;
+  if (error && !summary) return <div className="error">⚠ {error}</div>;
   if (!summary) return <div className="muted">Loading dashboard…</div>;
 
   return (
