@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes, Link, useNavigate } from "react-router-dom";
+import { Navigate, Route, Routes, Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "./context/AuthContext.jsx";
 import Login from "./pages/Login.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
@@ -7,8 +7,10 @@ import Room from "./pages/Room.jsx";
 
 function Protected({ children }) {
   const { user, loading } = useAuth();
+  const location = useLocation();
   if (loading) return <div className="center muted">Loading…</div>;
-  if (!user) return <Navigate to="/login" replace />;
+  // Preserve where the user was headed (e.g. an invite link) so login returns there.
+  if (!user) return <Navigate to="/login" replace state={{ from: location }} />;
   return children;
 }
 

@@ -8,6 +8,7 @@ export default function Courses() {
   const [title, setTitle] = useState("");
   const [error, setError] = useState("");
   const [attendance, setAttendance] = useState(null);
+  const [copied, setCopied] = useState(null);
 
   async function refresh() {
     try {
@@ -54,6 +55,19 @@ export default function Courses() {
     setAttendance({ id, rows });
   }
 
+  async function copyInvite(roomId) {
+    // The shareable join link — anyone enrolled can open it, sign in, and the
+    // platform drops them straight into the live room.
+    const url = `${window.location.origin}/room/${roomId}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(roomId);
+      setTimeout(() => setCopied(null), 2000);
+    } catch {
+      window.prompt("Copy this invite link:", url);
+    }
+  }
+
   return (
     <div>
       <h1>Courses & Sessions</h1>
@@ -96,6 +110,9 @@ export default function Courses() {
                       <Link className="btn small" to={`/room/${s.room_id}`}>
                         Join
                       </Link>
+                      <button className="btn small" onClick={() => copyInvite(s.room_id)}>
+                        {copied === s.room_id ? "✓ Copied" : "Copy link"}
+                      </button>
                       <button className="btn small danger" onClick={() => endSession(s.id)}>
                         End
                       </button>

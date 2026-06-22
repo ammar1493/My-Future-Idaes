@@ -1,10 +1,13 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 
 export default function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  // After login, return to the page the invite link pointed at (default: dashboard).
+  const dest = location.state?.from?.pathname || "/";
   const [email, setEmail] = useState("coordinator@livetrain.dev");
   const [password, setPassword] = useState("password");
   const [error, setError] = useState("");
@@ -16,7 +19,7 @@ export default function Login() {
     setError("");
     try {
       await login(email, password);
-      navigate("/");
+      navigate(dest, { replace: true });
     } catch (err) {
       setError(err.message);
     } finally {
