@@ -10,6 +10,20 @@ video rooms. Because we own the signaling, every join, leave, and heartbeat is
 logged at the source, and an attendance engine derives a precise, tamper-evident
 register for each session.
 
+## Screenshots
+
+| Coordinator dashboard | Automated attendance |
+|---|---|
+| ![Dashboard](docs/screenshots/dashboard.png) | ![Attendance](docs/screenshots/attendance.png) |
+
+| Courses & sessions | Sign in |
+|---|---|
+| ![Courses](docs/screenshots/courses.png) | ![Login](docs/screenshots/login.png) |
+
+The dashboard shows one coordinator watching many courses live at once, with
+per-course presence bars; the register is computed automatically from join/leave
+events — no manual roll call.
+
 ---
 
 ## Why a custom platform?
