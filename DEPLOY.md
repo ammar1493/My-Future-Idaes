@@ -101,3 +101,24 @@ header and login will use it automatically.
 In either Vercel project → **Settings → Domains** → add your domain (e.g.
 `training.neftenergies.com` for the frontend). Update `CORS_ORIGINS` /
 `VITE_API_BASE` to match, then redeploy.
+
+---
+
+## Troubleshooting (most common issues)
+
+- **`/health` errors or DB connection fails** → `DATABASE_URL` must start with
+  `postgresql+psycopg://` (not `postgres://`) and end with `?sslmode=require`.
+- **Can't log in as coordinator** → the coordinator is created on a cold start
+  *after* `BOOTSTRAP_COORDINATOR_EMAIL` / `_PASSWORD` exist. If you added them
+  after the first deploy, **Redeploy** the backend, then try again.
+- **Frontend shows CORS / network errors** → `CORS_ORIGINS` (backend) must be the
+  exact frontend URL — `https://…`, **no trailing slash**. Redeploy backend after
+  changing it.
+- **Frontend calls the wrong API / localhost** → `VITE_API_BASE` is baked in at
+  **build time**. After changing it you must **Redeploy the frontend**.
+- **API returns 404 for `/api/...`** → the backend project's **Root Directory**
+  must be `backend` (and the frontend's must be `frontend`).
+- **Video won't connect / attendance stays 0** → check `LIVEKIT_URL` (starts with
+  `wss://`), key/secret, and that the LiveKit **webhook** points to
+  `https://<backend>/api/livekit/webhook`. Attendance updates as students
+  join/leave the LiveKit room.
