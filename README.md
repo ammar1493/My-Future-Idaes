@@ -37,7 +37,7 @@ screen will pick it up automatically (the SVG is the fallback).
 
 Automated attendance is only as good as the join/leave signal it's built on.
 Third-party meeting APIs expose that signal inconsistently and with delay. By
-owning the room, LiveTrain gets:
+owning the room, the platform gets:
 
 - **Exact presence** — every participant's join/leave/heartbeat timestamped server-side.
 - **Crash tolerance** — a student whose laptop dies is closed out at their last
@@ -69,14 +69,11 @@ owning the room, LiveTrain gets:
 ```
 
 **Attendance pipeline:** every join/leave is written as an append-only row in
-`presence_events`. The source of those rows depends on the video backend:
+`presence_events`. LiveKit calls `/api/livekit/webhook` on `participant_joined` /
+`participant_left`; we translate each into a presence event. No persistent socket
+on our side — so the backend runs entirely on serverless (Vercel).
 
-- **LiveKit (production):** LiveKit calls `/api/livekit/webhook` on
-  `participant_joined` / `participant_left`; we translate each into a presence
-  event. No persistent socket on our side — so the backend runs on serverless.
-- **Mesh (fallback):** the room websocket logs join/leave/heartbeat directly.
-
-Either way the attendance engine (`app/core/attendance_engine.py`) replays a
+The attendance engine (`app/core/attendance_engine.py`) replays a
 session's events into present-seconds per student, divides by session length,
 and classifies each as `present` / `partial` / `absent` against configurable
 thresholds — **idempotent and log-derived**, so restarts, duplicate joins, and
@@ -90,30 +87,13 @@ webhook, on session end, and on demand (`?recompute=true`).
 | Layer     | Choice                                  |
 |-----------|-----------------------------------------|
 | Backend   | Python · FastAPI · SQLAlchemy 2         |
-| Database  | PostgreSQL                              |
+| Database  | Vercel Postgres                         |
 | Realtime  | LiveKit webhooks · dashboard polling    |
-| Video     | LiveKit SFU (built-in WebRTC mesh fallback) |
+| Video     | LiveKit Cloud (managed SFU)             |
 | Frontend  | React · Vite · React Router             |
-| Deploy    | Vercel (frontend + serverless API) · Docker Compose |
+| Deploy    | Vercel (frontend + serverless API)      |
 
 ---
-
-## Quick start (Docker)
-
-```bash
-docker compose up --build
-# Frontend  → http://localhost:8080
-# API docs  → http://localhost:8000/docs
-```
-
-Seed demo data (12 courses, all live, with enrolled students):
-
-```bash
-docker compose exec backend python -m app.seed
-```
-
-Then sign in as **coordinator@livetrain.dev / password** to see every running
-course on the dashboard.
 
 ## Local development
 
@@ -122,7 +102,7 @@ course on the dashboard.
 cd backend
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env                 # uses Postgres by default
+cp .env.example .env                 # set DATABASE_URL (Postgres; or sqlite:///./dev.db for a quick local run)
 uvicorn app.main:app --reload
 python -m app.seed                   # optional demo data
 pytest                               # attendance engine tests
@@ -190,7 +170,7 @@ dashboard), and a free **LiveKit Cloud** project.
 
 4. **Backend → Vercel** (new project, root directory = `backend/`). Env vars:
    ```
-   DATABASE_URL=postgresql+psycopg://…   (Neon, pooled)
+   DATABASE_URL=postgresql+psycopg://…   (Vercel Postgres)
    SECRET_KEY=<long random>
    LIVEKIT_URL=wss://<your>.livekit.cloud
    LIVEKIT_API_KEY=…
@@ -208,27 +188,12 @@ dashboard), and a free **LiveKit Cloud** project.
    shareable `/room/<id>` link drops anyone enrolled straight into the live
    LiveKit room, with attendance captured automatically.
 
-> **Note on serverless:** with LiveKit the backend uses no long-lived sockets,
-> so it fits Vercel's model. Prefer a persistent host? The included
-> `backend/Dockerfile` + `docker-compose.yml` run the same app on Render,
-> Railway, Fly.io, or any VPS unchanged.
-
-## Self-host on your own server & domain
-
-Want **everything on your own infrastructure** — your VPS, your domain, no third
-party (including self-hosted LiveKit)? See **[`deploy/SELF_HOSTING.md`](deploy/SELF_HOSTING.md)**.
-It ships a one-command production stack (`deploy/docker-compose.prod.yml`) with
-Postgres, the API, the web app, a **self-hosted LiveKit SFU**, and **Caddy** for
-automatic HTTPS on your domains.
-
 ## Scaling to 100 concurrent courses
 
-- **Media:** LiveKit (the configured backend) is a production SFU and scales to
-  large classes out of the box. The built-in mesh remains as a no-dependency
-  fallback for small cohorts / local dev. The attendance layer is independent of
-  media transport.
-- **Realtime:** live counts are derived from the presence-event log in the DB,
-  so the dashboard scales horizontally with no shared in-memory state — any
+- **Media:** LiveKit Cloud is a production SFU and scales to large classes out of
+  the box. The attendance layer is independent of media transport.
+- **Realtime:** live counts are derived from the presence-event log in the DB, so
+  the dashboard scales horizontally with no shared in-memory state — any
   serverless instance can serve it.
 - **Attendance:** computed from the event log in a single cheap pass per session;
   recomputed on each LiveKit leave webhook and on session end.
@@ -238,18 +203,22 @@ automatic HTTPS on your domains.
 ```
 backend/
   app/
-    api/        auth, courses, sessions, dashboard, rooms (WS)
-    core/       security, deps, attendance_engine, realtime (RoomHub)
+    api/        auth, courses, sessions, dashboard, livekit_rooms, meta
+    core/       security, deps, attendance_engine, livekit
     models/     users, courses, sessions, attendance
     schemas/    Pydantic request/response models
     seed.py     demo data
+  api/index.py  Vercel serverless entry
+  vercel.json   Vercel Python function config
   tests/        attendance engine unit tests
 frontend/
+  public/       favicon, logo.png (your brand asset)
   src/
-    pages/      Login, Dashboard, Courses, Room (WebRTC)
+    pages/      Login, Dashboard, Courses, Room (LiveKit)
+    components/  Logo
     context/    AuthContext
-    api/        REST + WS client
-docker-compose.yml
+    api/        REST client
+  vercel.json   Vite SPA config
 ```
 
 ## Roadmap

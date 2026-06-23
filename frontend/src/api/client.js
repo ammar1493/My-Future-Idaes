@@ -56,13 +56,3 @@ export const api = {
 
   dashboardSummary: () => request("/dashboard/summary"),
 };
-
-// WebSocket helper for the built-in mesh fallback. Honors VITE_API_BASE when
-// the backend is on a different origin; otherwise uses same-origin (Vite proxy).
-export function wsUrl(path) {
-  if (API_BASE) {
-    return API_BASE.replace(/^http/, "ws") + path;
-  }
-  const proto = window.location.protocol === "https:" ? "wss" : "ws";
-  return `${proto}://${window.location.host}${path}`;
-}

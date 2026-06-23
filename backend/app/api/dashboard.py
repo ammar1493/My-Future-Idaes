@@ -1,11 +1,10 @@
 """Coordinator dashboard: a single live view across all running courses."""
-from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Depends
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.deps import require_coordinator
-from app.core.realtime import hub
-from app.database import SessionLocal, get_db
+from app.database import get_db
 from app.models import (
     Course,
     CourseSession,
@@ -106,25 +105,9 @@ def _build_summary(db: Session) -> DashboardSummary:
 
 @router.get("/summary", response_model=DashboardSummary)
 def summary(db: Session = Depends(get_db), _: User = Depends(require_coordinator)):
-    """Snapshot of every running course for the coordinator."""
+    """Snapshot of every running course for the coordinator.
+
+    Live counts are derived from the presence-event log, so the frontend simply
+    polls this endpoint — no persistent socket, which keeps it serverless-native.
+    """
     return _build_summary(db)
-
-
-@router.websocket("/live")
-async def dashboard_live(ws: WebSocket):
-    """Push live presence updates to the coordinator as they happen."""
-    await ws.accept()
-    await hub.subscribe_dashboard(ws)
-    # Send an initial snapshot immediately on connect.
-    db = SessionLocal()
-    try:
-        await ws.send_json({"type": "snapshot", "data": _build_summary(db).model_dump(mode="json")})
-    finally:
-        db.close()
-    try:
-        while True:
-            await ws.receive_text()  # keep-alive; client may ping
-    except WebSocketDisconnect:
-        pass
-    finally:
-        await hub.unsubscribe_dashboard(ws)
