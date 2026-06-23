@@ -1,0 +1,25 @@
+# Self-hosted LiveKit SFU configuration.
+# The api key/secret here MUST match LIVEKIT_API_KEY / LIVEKIT_API_SECRET in
+# .env.prod (that's how the backend signs join tokens and verifies webhooks).
+
+port: 7880
+
+rtc:
+  tcp_port: 7881
+  port_range_start: 50000
+  port_range_end: 50100
+  # Discover and advertise the server's public IP so browsers can reach media.
+  use_external_ip: true
+
+redis:
+  address: redis:6379
+
+keys:
+  # CHANGE THIS — key: secret. Keep in sync with .env.prod.
+  devkey: change-this-to-a-long-random-secret
+
+# LiveKit calls our backend on join/leave; the attendance engine consumes these.
+webhook:
+  api_key: devkey
+  urls:
+    - https://app.example.com/api/livekit/webhook

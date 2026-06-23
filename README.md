@@ -181,6 +181,14 @@ with **LiveKit** as the media server. You'll need three free-tier accounts:
 > `backend/Dockerfile` + `docker-compose.yml` run the same app on Render,
 > Railway, Fly.io, or any VPS unchanged.
 
+## Self-host on your own server & domain
+
+Want **everything on your own infrastructure** — your VPS, your domain, no third
+party (including self-hosted LiveKit)? See **[`deploy/SELF_HOSTING.md`](deploy/SELF_HOSTING.md)**.
+It ships a one-command production stack (`deploy/docker-compose.prod.yml`) with
+Postgres, the API, the web app, a **self-hosted LiveKit SFU**, and **Caddy** for
+automatic HTTPS on your domains.
+
 ## Scaling to 100 concurrent courses
 
 - **Media:** LiveKit (the configured backend) is a production SFU and scales to
