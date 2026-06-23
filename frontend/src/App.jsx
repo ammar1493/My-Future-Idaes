@@ -2,6 +2,7 @@ import { Navigate, Route, Routes, Link, useNavigate, useLocation } from "react-r
 import { useAuth } from "./context/AuthContext.jsx";
 import Logo from "./components/Logo.jsx";
 import Login from "./pages/Login.jsx";
+import Register from "./pages/Register.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
 import Courses from "./pages/Courses.jsx";
 import Room from "./pages/Room.jsx";
@@ -49,6 +50,7 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
+      <Route path="/register" element={<Register />} />
       <Route
         path="/"
         element={

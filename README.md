@@ -144,6 +144,10 @@ npm run dev                          # http://localhost:5173 (proxies API to :80
 
 ## Deploy on Vercel (recommended — no server to run)
 
+> **Full click-by-click runbook: [`DEPLOY.md`](DEPLOY.md)** — includes a ready
+> first login (auto-created coordinator) and student self-signup, so it works
+> the moment it's deployed.
+
 Everything **you operate runs on Vercel**: the frontend, the API (Python
 serverless functions), and the database (**Vercel Postgres**). There is no
 server to provision or maintain.

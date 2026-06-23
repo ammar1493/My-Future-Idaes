@@ -15,6 +15,30 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 @router.post("/register", response_model=UserOut)
 def register(payload: UserCreate, db: Session = Depends(get_db)):
+    """Public self-service signup. Always creates a `student` — elevated roles
+    (instructor/coordinator/admin) are created by an admin via /api/auth/users."""
+    exists = db.execute(select(User).where(User.email == payload.email)).scalar_one_or_none()
+    if exists:
+        raise HTTPException(status_code=400, detail="Email already registered")
+    user = User(
+        email=payload.email,
+        full_name=payload.full_name,
+        hashed_password=hash_password(payload.password),
+        role=UserRole.student,
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+@router.post("/users", response_model=UserOut)
+def create_user(
+    payload: UserCreate,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_roles(UserRole.admin, UserRole.coordinator)),
+):
+    """Admin/coordinator route to create staff or student accounts with any role."""
     exists = db.execute(select(User).where(User.email == payload.email)).scalar_one_or_none()
     if exists:
         raise HTTPException(status_code=400, detail="Email already registered")
