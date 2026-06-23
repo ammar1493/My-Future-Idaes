@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes, Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "./context/AuthContext.jsx";
+import Logo from "./components/Logo.jsx";
 import Login from "./pages/Login.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
 import Courses from "./pages/Courses.jsx";
@@ -20,7 +21,7 @@ function Shell({ children }) {
   return (
     <div>
       <header className="topbar">
-        <div className="brand">● LiveTrain</div>
+        <Link to="/"><Logo size={38} /></Link>
         <nav>
           <Link to="/">Dashboard</Link>
           <Link to="/courses">Courses</Link>

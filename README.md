@@ -1,28 +1,35 @@
-# LiveTrain — Live Online Training Platform
+# NEFT ENERGIES — Live Training Platform
 
-A platform for running **up to 100 live online courses simultaneously**, where a
-single coordinator can monitor every running session from one dashboard and
-**attendance is captured automatically** — no manual register, for every course
-at once.
+A platform for **NEFT ENERGIES** to run **up to 100 live online courses
+simultaneously**, where a single coordinator can monitor every running session
+from one dashboard and **attendance is captured automatically** — no manual
+register, for every course at once.
 
-Instead of bolting onto Zoom / Teams / Meet, LiveTrain ships its own WebRTC
+Instead of bolting onto Zoom / Teams / Meet, the platform ships its own WebRTC
 video rooms. Because we own the signaling, every join, leave, and heartbeat is
 logged at the source, and an attendance engine derives a precise, tamper-evident
 register for each session.
 
 ## Screenshots
 
-| Coordinator dashboard | Automated attendance |
+| Coordinator dashboard | Courses & sessions |
 |---|---|
-| ![Dashboard](docs/screenshots/dashboard.png) | ![Attendance](docs/screenshots/attendance.png) |
+| ![Dashboard](docs/screenshots/dashboard.png) | ![Courses](docs/screenshots/courses.png) |
 
-| Courses & sessions | Sign in |
+| Sign in | |
 |---|---|
-| ![Courses](docs/screenshots/courses.png) | ![Login](docs/screenshots/login.png) |
+| ![Login](docs/screenshots/login.png) | |
 
 The dashboard shows one coordinator watching many courses live at once, with
 per-course presence bars; the register is computed automatically from join/leave
 events — no manual roll call.
+
+### Branding
+
+The UI uses the NEFT ENERGIES palette (navy `#0B2545`, gold `#F4B41A`, green/teal
+accents). The brand mark renders from a scalable SVG by default. **To use the
+exact logo image, save it as `frontend/public/logo.png`** — the header and login
+screen will pick it up automatically (the SVG is the fallback).
 
 ---
 
@@ -155,11 +162,22 @@ npm run dev                          # http://localhost:5173 (proxies API to :80
 
 ---
 
-## Deploy live: Vercel + LiveKit
+## Deploy on Vercel (recommended — no server to run)
 
-The platform is configured to go live on **Vercel** (frontend + serverless API)
-with **LiveKit** as the media server. You'll need three free-tier accounts:
-**Vercel**, **LiveKit Cloud**, and a serverless **Postgres** (e.g. Neon).
+Everything **you operate runs on Vercel**: the frontend, the API (Python
+serverless functions), and the database (**Vercel Postgres**). There is no
+server to provision or maintain.
+
+> **One honest caveat about live video.** Vercel's serverless functions can't
+> host a real-time video media server (an SFU needs persistent UDP/WebSocket
+> connections that serverless doesn't provide). So the *video transport* uses
+> **LiveKit Cloud** — a fully managed service, nothing for you to run or
+> maintain (just like Vercel). Your app, data, and attendance logic stay 100% on
+> Vercel; LiveKit Cloud only carries the audio/video streams. This is the only
+> way to have custom in-app live video without running your own server.
+
+You'll need: a **Vercel** account, **Vercel Postgres** (one click in the Vercel
+dashboard), and a free **LiveKit Cloud** project.
 
 1. **Push this repo to GitHub** (Vercel deploys from a git repo).
 
@@ -167,8 +185,8 @@ with **LiveKit** as the media server. You'll need three free-tier accounts:
    **API secret**. Under the project's **Webhooks**, add:
    `https://<your-backend-host>/api/livekit/webhook`
 
-3. **Postgres** → create a Neon database and copy its pooled connection string
-   (as `postgresql+psycopg://…`).
+3. **Database** → in the Vercel dashboard, **Storage → Create → Postgres**, then
+   copy its connection string (prefix it as `postgresql+psycopg://…`).
 
 4. **Backend → Vercel** (new project, root directory = `backend/`). Env vars:
    ```

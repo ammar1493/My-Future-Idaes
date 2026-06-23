@@ -1,4 +1,4 @@
-"""LiveTrain API — entrypoint."""
+"""NEFT Energies — Live Training API entrypoint."""
 import asyncio
 import os
 from contextlib import asynccontextmanager

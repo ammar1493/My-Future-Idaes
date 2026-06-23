@@ -32,7 +32,7 @@ def run() -> None:
         now = datetime.now(timezone.utc)
 
         coordinator = User(
-            email="coordinator@livetrain.dev",
+            email="coordinator@neftenergies.com",
             full_name="Coordinator",
             hashed_password=hash_password("password"),
             role=UserRole.coordinator,
@@ -43,7 +43,7 @@ def run() -> None:
         for i in range(NUM_COURSES * STUDENTS_PER_COURSE):
             students.append(
                 User(
-                    email=f"student{i}@livetrain.dev",
+                    email=f"student{i}@neftenergies.com",
                     full_name=f"Student {i}",
                     hashed_password=hash_password("password"),
                     role=UserRole.student,
@@ -54,7 +54,7 @@ def run() -> None:
 
         for c in range(NUM_COURSES):
             instructor = User(
-                email=f"instructor{c}@livetrain.dev",
+                email=f"instructor{c}@neftenergies.com",
                 full_name=f"Instructor {c}",
                 hashed_password=hash_password("password"),
                 role=UserRole.instructor,
@@ -91,7 +91,7 @@ def run() -> None:
         print(
             f"Seeded {NUM_COURSES} courses, {len(students)} students, "
             f"{NUM_COURSES} live sessions.\n"
-            "Login: coordinator@livetrain.dev / password"
+            "Login: coordinator@neftenergies.com / password"
         )
     finally:
         db.close()

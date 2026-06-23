@@ -7,7 +7,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     # Core
-    app_name: str = "LiveTrain"
+    app_name: str = "NEFT Energies"
     environment: str = "development"
     secret_key: str = "change-me-in-production-this-is-not-secure"
     access_token_expire_minutes: int = 60 * 12

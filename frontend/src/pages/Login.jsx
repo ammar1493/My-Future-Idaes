@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
+import Logo from "../components/Logo.jsx";
 
 export default function Login() {
   const { login } = useAuth();
@@ -8,7 +9,7 @@ export default function Login() {
   const location = useLocation();
   // After login, return to the page the invite link pointed at (default: dashboard).
   const dest = location.state?.from?.pathname || "/";
-  const [email, setEmail] = useState("coordinator@livetrain.dev");
+  const [email, setEmail] = useState("coordinator@neftenergies.com");
   const [password, setPassword] = useState("password");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -30,8 +31,8 @@ export default function Login() {
   return (
     <div className="auth-wrap">
       <form className="auth-card" onSubmit={submit}>
-        <div className="brand big">● LiveTrain</div>
-        <p className="muted">Coordinator & instructor console</p>
+        <Logo size={64} variant="stack" />
+        <p className="tagline muted">Live Training Platform · Coordinator console</p>
         <label>Email</label>
         <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" />
         <label>Password</label>
@@ -44,7 +45,7 @@ export default function Login() {
         <button className="btn primary" disabled={busy}>
           {busy ? "Signing in…" : "Sign in"}
         </button>
-        <p className="hint muted">Demo: coordinator@livetrain.dev / password</p>
+        <p className="hint muted">Demo: coordinator@neftenergies.com / password</p>
       </form>
     </div>
   );
