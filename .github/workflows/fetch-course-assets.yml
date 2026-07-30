@@ -1,0 +1,46 @@
+name: Fetch course assets
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - claude/sanad-drilling-course-4ys8zd
+
+permissions:
+  contents: write
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: claude/sanad-drilling-course-4ys8zd
+
+      - name: Download and compress images
+        run: |
+          set -e
+          pip install --quiet pillow
+          mkdir -p SANAD-Fire-Team-Leader-Course/assets/img
+          base="https://d8j0ntlcm91z4.cloudfront.net/user_3EV3JtMjrdD6ueybMLLnwtVfGai"
+          declare -A IMGS=(
+            [gasmon]="hf_20260730_140712_ed076dff-18f9-4aa2-91ae-08b640b781c9"
+            [preplan]="hf_20260730_140714_4eb43222-84c5-4fb2-a813-e3dc1c50ecd1"
+            [rescue]="hf_20260730_140717_2d694652-87a5-451b-b8db-dd96c7d56856"
+            [foam]="hf_20260730_140719_a67d4f65-60eb-43fd-8c23-2749489005fe"
+            [classroom]="hf_20260730_140722_5ab40117-20fc-48e6-9aea-c37212bda384"
+            [muster]="hf_20260730_140725_9ec00ccc-9cea-4a5b-8b73-af6329f9640e"
+          )
+          for k in "${!IMGS[@]}"; do
+            curl -sfSL --retry 4 -o "/tmp/$k.png" "$base/${IMGS[$k]}.png"
+            python3 -c "from PIL import Image; im = Image.open('/tmp/$k.png').convert('RGB'); im.thumbnail((1920, 1920)); im.save('SANAD-Fire-Team-Leader-Course/assets/img/$k.jpg', quality=87)"
+          done
+          ls -la SANAD-Fire-Team-Leader-Course/assets/img
+
+      - name: Commit images
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add SANAD-Fire-Team-Leader-Course/assets/img
+          git commit -m "Add expanded course image assets [skip ci]"
+          git push origin claude/sanad-drilling-course-4ys8zd
