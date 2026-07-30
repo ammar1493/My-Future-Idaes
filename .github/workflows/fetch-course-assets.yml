@@ -2,6 +2,9 @@ name: Fetch course assets
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - claude/sanad-drilling-course-4ys8zd
 
 permissions:
   contents: write
