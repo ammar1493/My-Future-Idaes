@@ -20,6 +20,7 @@ jobs:
       - name: Download and compress images
         run: |
           set -e
+          pip install --quiet pillow
           mkdir -p SANAD-Fire-Team-Leader-Course/assets/img
           base="https://d8j0ntlcm91z4.cloudfront.net/user_3EV3JtMjrdD6ueybMLLnwtVfGai"
           declare -A IMGS=(
@@ -36,7 +37,7 @@ jobs:
           )
           for k in "${!IMGS[@]}"; do
             curl -sfSL --retry 4 -o "/tmp/$k.png" "$base/${IMGS[$k]}.png"
-            convert "/tmp/$k.png" -resize 1920x1080 -quality 87 "SANAD-Fire-Team-Leader-Course/assets/img/$k.jpg"
+            python3 -c "from PIL import Image; im = Image.open('/tmp/$k.png').convert('RGB'); im.thumbnail((1920, 1920)); im.save('SANAD-Fire-Team-Leader-Course/assets/img/$k.jpg', quality=87)"
           done
           ls -la SANAD-Fire-Team-Leader-Course/assets/img
 
