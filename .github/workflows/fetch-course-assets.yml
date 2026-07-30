@@ -1,0 +1,46 @@
+name: Fetch course assets
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: claude/sanad-drilling-course-4ys8zd
+
+      - name: Download and compress images
+        run: |
+          set -e
+          mkdir -p SANAD-Fire-Team-Leader-Course/assets/img
+          base="https://d8j0ntlcm91z4.cloudfront.net/user_3EV3JtMjrdD6ueybMLLnwtVfGai"
+          declare -A IMGS=(
+            [cover]="hf_20260730_133420_76c40ecf-8748-4da5-a7c8-efdfe33e533a"
+            [day1]="hf_20260730_133457_55f54263-3820-4249-81be-3300b0dd2219"
+            [day2]="hf_20260730_133520_c3f54828-86fd-49d4-81e2-03fabc6535eb"
+            [day3]="hf_20260730_133531_4fc67e73-e089-4c8d-a572-53483bdfc92a"
+            [flames]="hf_20260730_133534_1e72dd51-99fe-4a74-8a42-f7c162a29ee9"
+            [scba]="hf_20260730_133547_0825b9ee-bc8e-43c6-ad53-91c98da44cab"
+            [radio]="hf_20260730_133551_dfe8d19b-7bfd-4a20-b837-26a586619578"
+            [icp]="hf_20260730_133558_d07eeb7c-c8bc-4af3-bd29-eb4b641d701b"
+            [sizeup]="hf_20260730_133605_d65e1733-0be9-4430-af0f-a77f8b187484"
+            [debrief]="hf_20260730_133608_3ae794d9-1993-4477-9693-9a97173b5d78"
+          )
+          for k in "${!IMGS[@]}"; do
+            curl -sfSL --retry 4 -o "/tmp/$k.png" "$base/${IMGS[$k]}.png"
+            convert "/tmp/$k.png" -resize 1920x1080 -quality 87 "SANAD-Fire-Team-Leader-Course/assets/img/$k.jpg"
+          done
+          ls -la SANAD-Fire-Team-Leader-Course/assets/img
+
+      - name: Commit images
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add SANAD-Fire-Team-Leader-Course/assets/img
+          git commit -m "Add course image assets [skip ci]"
+          git push origin claude/sanad-drilling-course-4ys8zd
