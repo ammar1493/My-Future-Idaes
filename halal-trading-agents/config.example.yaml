@@ -23,21 +23,23 @@ halal:
 # Each agent gets its own slice ("sleeve") of your USDT. It can only spend
 # that slice and only sell coins it bought, so the rest of your portfolio is
 # never touched. monthly_target_usd = the subscription it should cover.
+# Current goal: each agent covers a Claude Max 5x plan ($100/month) from $100.
+# That is 100%/month per agent - far above what any strategy sustains; see README.
 agents:
   trend:
     strategy: trend_following
-    capital_usd: 400
-    monthly_target_usd: 20
+    capital_usd: 100
+    monthly_target_usd: 100
     universe: [BTC, ETH, SOL, LINK]
   reversion:
     strategy: mean_reversion
-    capital_usd: 400
-    monthly_target_usd: 20
+    capital_usd: 100
+    monthly_target_usd: 100
     universe: [BTC, ETH, SOL, ADA, AVAX]
   rotation:
     strategy: momentum_rotation
-    capital_usd: 400
-    monthly_target_usd: 20
+    capital_usd: 100
+    monthly_target_usd: 100
     universe: [BTC, ETH, SOL, ADA, DOT, LINK, AVAX, ATOM, NEAR]
 
 risk:
