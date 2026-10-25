@@ -1,0 +1,57 @@
+# Copy to config.yaml and edit. API keys go in .env, never here.
+
+# paper   = real Binance prices, simulated orders (start here)
+# testnet = real orders on Binance's spot testnet with fake money
+# live    = real orders with real money (also needs HALAL_TRADER_CONFIRM_LIVE=yes)
+mode: paper
+
+quote_asset: USDT
+interval: 4h            # candle size the agents trade on: 1h | 4h | 1d
+history_days: 1095      # how much history to train on (3 years)
+state_dir: state
+data_dir: data
+fee_rate: 0.001         # Binance spot taker fee (0.1%)
+slippage: 0.0005
+
+halal:
+  # Starting list only. Verify every coin with a scholar / screening service
+  # you trust and edit freely. Anything not listed here is never traded.
+  approved: [BTC, ETH, SOL, ADA, DOT, LINK, AVAX, ATOM, NEAR, ALGO, XLM, LTC]
+  quote_assets: [USDT, USDC, FDUSD]
+  blocked: {}           # e.g. {XRP: "my scholar advised against it"}
+
+# Each agent gets its own slice ("sleeve") of your USDT. It can only spend
+# that slice and only sell coins it bought, so the rest of your portfolio is
+# never touched. monthly_target_usd = the subscription it should cover.
+agents:
+  trend:
+    strategy: trend_following
+    capital_usd: 400
+    monthly_target_usd: 20
+    universe: [BTC, ETH, SOL, LINK]
+  reversion:
+    strategy: mean_reversion
+    capital_usd: 400
+    monthly_target_usd: 20
+    universe: [BTC, ETH, SOL, ADA, AVAX]
+  rotation:
+    strategy: momentum_rotation
+    capital_usd: 400
+    monthly_target_usd: 20
+    universe: [BTC, ETH, SOL, ADA, DOT, LINK, AVAX, ATOM, NEAR]
+
+risk:
+  stop_loss: 0.08
+  max_drawdown: 0.25
+  daily_loss_limit: 0.05
+  max_position_weight: 0.5
+  lock_profits_on_target: true   # go to cash for the rest of the month once the target is made
+  stop_cooldown_hours: 24
+  rebalance_threshold: 0.05
+  min_trade_usd: 10
+
+training:
+  n_splits: 3
+  min_sharpe: 0.5
+  max_drawdown: 0.35
+  min_trades: 5
